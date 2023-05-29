@@ -115,3 +115,78 @@ func Lazy[T any](meth IterFunc[[]T]) Iterator[T] {
 	}
 	return &iterChain[T]{its: wrap}
 }
+
+type filterIter[T any] struct {
+	it       Iterator[T]
+	doFilter func(T) bool
+}
+
+func (f *filterIter[T]) Next() (T, error) {
+	for {
+		if ret, err := f.it.Next(); err != nil {
+			return ret, err
+		} else if !f.doFilter(ret) {
+			continue
+		} else {
+			return ret, err
+		}
+	}
+}
+func WithFilter[T any](it Iterator[T], ms ...func(T) bool) Iterator[T] {
+	return &filterIter[T]{it: it, doFilter: func(val T) bool { return AllMatch(val, ms...) }}
+}
+
+func AllMatch[T any](val T, ms ...func(T) bool) bool {
+	for _, m := range ms {
+		if !m(val) {
+			return false
+		}
+	}
+	return true
+}
+func All[T any](items []T, m func(T) bool) bool {
+	for _, item := range items {
+		if !m(item) {
+			return false
+		}
+	}
+	return true
+}
+func Any[T any](items []T, m func(T) bool) bool {
+	for _, item := range items {
+		if m(item) {
+			return true
+		}
+	}
+	return false
+}
+func Map[T any, R any](items []T, m func(T) (R, error)) (ret []R, err error) {
+	ret = make([]R, len(items))
+	for i, item := range items {
+		if ret[i], err = m(item); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
+}
+
+func Apply[T any](val T, ms ...func(T) (T, error)) (ret T, err error) {
+	ret = val
+	for _, m := range ms {
+		if ret, err = m(ret); err != nil {
+			return
+		}
+	}
+	return
+}
+func Filter[T any](items []T, fn func(T) bool) []T {
+	ret := make([]T, len(items))
+	cur := 0
+	for _, item := range items {
+		if fn(item) {
+			ret[cur] = item
+			cur += 1
+		}
+	}
+	return ret
+}
