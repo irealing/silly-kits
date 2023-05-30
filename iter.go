@@ -188,5 +188,5 @@ func Filter[T any](items []T, fn func(T) bool) []T {
 			cur += 1
 		}
 	}
-	return ret
+	return ret[0:cur]
 }

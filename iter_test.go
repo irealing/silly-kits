@@ -101,3 +101,25 @@ func TestWithFilter(t *testing.T) {
 	})
 	testIterFunc(t, it, []int{1, 3})
 }
+func TestFilter(t *testing.T) {
+	ret := Filter([]int{1, 2, 3, 4}, func(i int) bool {
+		return i%2 == 1
+	})
+	if !compareSlice(ret, []int{1, 3}) {
+		t.Fail()
+	}
+}
+func TestAny(t *testing.T) {
+	if !Any([]int{1, 2, 4, 5, 1024}, func(i int) bool {
+		return i > 100
+	}) {
+		t.Fail()
+	}
+}
+func TestAll(t *testing.T) {
+	if !All([]int{1, 3, 5, 7}, func(i int) bool {
+		return i%2 == 1
+	}) {
+		t.Fail()
+	}
+}
