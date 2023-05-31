@@ -2,6 +2,7 @@ package silly_kits
 
 import (
 	"errors"
+	"sync/atomic"
 )
 
 type Iterator[T any] interface {
@@ -189,4 +190,76 @@ func Filter[T any](items []T, fn func(T) bool) []T {
 		}
 	}
 	return ret[0:cur]
+}
+func FindIter[T any](it Iterator[T], fn func(T) (bool, error)) (T, error) {
+	for {
+		if item, err := it.Next(); err != nil {
+			return item, err
+		} else if ok, err := fn(item); err != nil || ok {
+			return item, err
+		}
+	}
+}
+
+type Enumerate[T any] struct {
+	it     Iterator[T]
+	cursor int
+}
+
+func NewEnumerate[T any](it Iterator[T]) *Enumerate[T] {
+	return &Enumerate[T]{it: it}
+}
+
+func (receiver *Enumerate[T]) Next() (int, T, error) {
+	ret, err := receiver.it.Next()
+	if err != nil {
+		return -1, ret, err
+	}
+	defer func() {
+		receiver.cursor += 1
+	}()
+	return receiver.cursor, ret, err
+}
+func Reduce[T any](it Iterator[T], op func(a, b T) (T, error), initializer func() (T, error)) (T, error) {
+	var initMeth func() (T, error)
+	if initializer != nil {
+		initMeth = initializer
+	} else {
+		initMeth = it.Next
+	}
+	val, err := initMeth()
+	if err != nil {
+		return val, err
+	}
+	for {
+		if r, err := it.Next(); err != nil {
+			if err == Done {
+				return val, nil
+			}
+			return r, err
+		} else if val, err = op(val, r); err != nil {
+			return val, err
+		}
+	}
+}
+
+type sillyRange[T any] struct {
+	initialized int32
+	lastValue   T
+	initializer func() (T, error)
+	plus        func(a T) (T, error)
+}
+
+func (s *sillyRange[T]) Next() (T, error) {
+	var err error
+	if atomic.CompareAndSwapInt32(&s.initialized, 0, 1) {
+		s.lastValue, err = s.initializer()
+		return s.lastValue, err
+	}
+	s.lastValue, err = s.plus(s.lastValue)
+	return s.lastValue, err
+}
+
+func SillyRange[T any](initializer func() (T, error), plus func(a T) (T, error)) Iterator[T] {
+	return &sillyRange[T]{initializer: initializer, plus: plus}
 }
