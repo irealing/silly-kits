@@ -123,3 +123,54 @@ func TestAll(t *testing.T) {
 		t.Fail()
 	}
 }
+func TestSillyRange(t *testing.T) {
+	it := SillyRange[int](func() (int, error) {
+		return 0, nil
+	}, func(a int) (int, error) {
+		if a >= 4 {
+			return -1, Done
+		}
+		a += 1
+		return a, nil
+	})
+	testIterFunc(t, it, []int{0, 1, 2, 3, 4})
+}
+func TestReduce(t *testing.T) {
+	it := SillyRange[int](func() (int, error) {
+		return 1, nil
+	}, func(a int) (int, error) {
+		if a >= 100 {
+			return -1, Done
+		}
+		a += 1
+		return a, nil
+	})
+	ret, err := Reduce[int](it, func(a, b int) (int, error) {
+		return a + b, nil
+	}, nil)
+	if ret != 5050 || err != nil {
+		t.Logf("ret= %d err = %s", ret, err)
+		t.Fail()
+	}
+}
+func TestFindIter(t *testing.T) {
+	ret, err := FindIter(SimpleIter([]int{1, 2, 3, 4, 5}), func(i int) (bool, error) {
+		return i > 1 && i%2 == 1, nil
+	})
+	if ret != 3 && err != nil {
+		t.Fail()
+	}
+}
+func TestNewEnumerate(t *testing.T) {
+	it := NewEnumerate(SimpleIter([]int{1, 2, 3, 4}))
+	pairs := [][]int{{0, 1}, {1, 2}, {2, 3}, {3, 4}}
+	for _, pair := range pairs {
+		c, v, err := it.Next()
+		if err != nil && c != pair[0] && v != pair[1] {
+			t.Fail()
+		}
+	}
+	if _, _, err := it.Next(); err != Done {
+		t.Fail()
+	}
+}
