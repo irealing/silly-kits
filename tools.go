@@ -1,7 +1,9 @@
 package silly_kits
 
 import (
+	"context"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -44,4 +46,16 @@ func ForEach[T any](items []T, fn func(T) error) error {
 		}
 	}
 	return err
+}
+func WaitAll(ctx context.Context, fs ...func(ctx context.Context)) {
+	wg := &sync.WaitGroup{}
+	for _, fn := range fs {
+		wg.Add(1)
+		fn := fn
+		go func() {
+			defer wg.Done()
+			fn(ctx)
+		}()
+	}
+	wg.Wait()
 }

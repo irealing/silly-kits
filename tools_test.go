@@ -1,6 +1,7 @@
 package silly_kits
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -37,4 +38,15 @@ func TestRetry(t *testing.T) {
 	if err != nil || val != 1023 {
 		t.Fail()
 	}
+}
+func TestWaitAll(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	fn1 := func(ctx context.Context) {
+		<-ctx.Done()
+	}
+	go func() {
+		time.Sleep(time.Second * 5)
+		cancel()
+	}()
+	WaitAll(ctx, fn1, fn1)
 }
